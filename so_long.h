@@ -42,7 +42,7 @@ typedef struct s_game
 	void	*img_angre;
 	void	*img_bb_vision;
 	char	**map;
-	int		tile_size;
+	int		t_s;
 	int		player_x;
 	int		player_y;
 	int		bb_n;
@@ -54,7 +54,7 @@ typedef struct s_game
 	int		curr_frame;
 	int		dead_frame;
 	int		dead_gif;
-	int		gif_stop;
+	int		gif_end;
 	long	rng_seed;
 	int		dead;
 	int		won;
@@ -86,7 +86,6 @@ void	find_bb_xy(t_game *game);
 void	animate(t_game *game);
 void	animate_death(t_game *game);
 void	animate_win(t_game *game);
-void	redraw(t_game *game);
 void	load_images(t_game *game);
 void	load_images_cont1(t_game *game, int w, int h);
 void	load_images_cont2(t_game *game, int w, int h);

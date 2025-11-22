@@ -26,7 +26,7 @@ void	game_var_init(t_game *game, int argc, char **argv)
 	game->walked = 0;
 	game->frame = 0;
 	game->curr_frame = 0;
-	game->gif_stop = 0;
+	game->gif_end = 0;
 	game->img_exit_trans = ft_calloc(sizeof(void *), 85);
 	game->img_death = ft_calloc(sizeof(void *), 5);
 	game->img_win = ft_calloc(sizeof(void *), 155);
@@ -34,6 +34,7 @@ void	game_var_init(t_game *game, int argc, char **argv)
 	game->mlx = mlx_init();
 	load_images(game);
 	map_open_and_row(argc, argv, game);
+	game->bb_xy = malloc(sizeof(t_BB) * game->bb_n);
 	find_player(game);
 	find_score(game);
 	find_bb_xy(game);
@@ -64,7 +65,9 @@ void	gigafree_cont(t_game *g, int i)
 			free(g->map[i++]);
 		free(g->map);
 	}
-	free(g->bb_xy);
+	if (g->bb_n != 0)
+		free(g->bb_xy);
+	get_next_line(-2);
 	exit(0);
 }
 
@@ -345,7 +348,7 @@ void	load_images(t_game *game)
 
 	w = 64;
 	h = 64;
-	game->tile_size = 64;
+	game->t_s = 64;
 	game->img_wall = mlx_xpm_file_to_image(game->mlx,
 			"images/forsenMaxLevel.xpm", &w, &h);
 	game->img_floor = mlx_xpm_file_to_image(game->mlx,
@@ -365,12 +368,6 @@ void	load_images(t_game *game)
 	game->img_exit_trans[2] = mlx_xpm_file_to_image(game->mlx,
 			"images/aware_xpm/frame_00_delay-0.2s.xpm", &w, &h);
 	load_images_cont1(game, w, h);
-}
-
-void	redraw(t_game *game)
-{
-	mlx_clear_window(game->mlx, game->win);
-	draw_map(game);
 }
 
 void	animate_win(t_game *game)
@@ -421,14 +418,14 @@ void	animate(t_game *game)
 	now = get_time_ms();
 	if (game->score != game->max_score)
 		return ;
-	if (now - last_time >= (long)50 && game->gif_stop == 0)
+	if (now - last_time >= (long)50 && game->gif_end == 0)
 	{
 		last_time = now;
 		game->curr_frame++;
 		if (game->curr_frame >= 60)
 		{
 			game->curr_frame = 59;
-			game->gif_stop = 1;
+			game->gif_end = 1;
 		}
 	}
 }
@@ -441,7 +438,6 @@ void	find_bb_xy(t_game *game)
 
 	y = 0;
 	i = 0;
-	game->bb_xy = malloc(sizeof(t_BB) * game->bb_n);
 	if (!game->bb_xy)
 		return ;
 	while (game->map[y])
@@ -525,8 +521,8 @@ void	actual_movement(t_game *game, int new_x, int new_y)
 		bb_move(game);
 		bb_looking(game);
 	}
-	ft_printf("%d\n", game->walked);
-	redraw(game);
+	ft_printf("steps taken: %d\n", game->walked);
+	draw_map(game);
 }
 
 int	target_logic(t_game *game, char target)
@@ -566,41 +562,41 @@ void	silly_norminette2(t_game *g, int y, int x)
 {
 	if (g->map[y][x] == 'B')
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_angre, x * g->tile_size, y * g->tile_size);
+			g->img_angre, x * g->t_s, y * g->t_s);
 	else if (g->map[y][x] == 'A')
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_bb_vision, x * g->tile_size, y * g->tile_size);
+			g->img_bb_vision, x * g->t_s, y * g->t_s);
 	else if (g->map[y][x] == 'P' && g->dead == 1)
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_death[g->dead_frame], x * g->tile_size, y * g->tile_size);
+			g->img_death[g->dead_frame], x * g->t_s, y * g->t_s);
 	else if (g->map[y][x] == 'P' && g->won == 1 && g->won_gif == 0)
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_win[g->won_frame], x * g->tile_size, y * g->tile_size);
+			g->img_win[g->won_frame], x * g->t_s, y * g->t_s);
 }
 
 void	silly_norminette(t_game *g, int y, int x)
 {
 	if (g->map[y][x] == '1')
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_wall, x * g->tile_size, y * g->tile_size);
+			g->img_wall, x * g->t_s, y * g->t_s);
 	else if (g->map[y][x] == '0')
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_floor, x * g->tile_size, y * g->tile_size);
+			g->img_floor, x * g->t_s, y * g->t_s);
 	else if (g->map[y][x] == 'P' && g->dead != 1 && g->won == 0)
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_player, x * g->tile_size, y * g->tile_size);
+			g->img_player, x * g->t_s, y * g->t_s);
 	else if (g->map[y][x] == 'C')
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_collectible, x * g->tile_size, y * g->tile_size);
-	else if (g->map[y][x] == 'E' && g->gif_stop == 1)
+			g->img_collectible, x * g->t_s, y * g->t_s);
+	else if (g->map[y][x] == 'E' && g->gif_end == 1)
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_exit_trans[84], x * g->tile_size, y * g->tile_size);
-	else if (g->map[y][x] == 'E' && g->score == g->max_score && g->gif_stop == 0)
+			g->img_exit_trans[84], x * g->t_s, y * g->t_s);
+	else if (g->map[y][x] == 'E' && g->score == g->max_score && g->gif_end == 0)
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_exit_trans[g->curr_frame], x * g->tile_size, y * g->tile_size);
+			g->img_exit_trans[g->curr_frame], x * g->t_s, y * g->t_s);
 	else if (g->map[y][x] == 'E')
 		mlx_put_image_to_window(g->mlx, g->win,
-			g->img_exit_trans[0], x * g->tile_size, y * g->tile_size);
+			g->img_exit_trans[0], x * g->t_s, y * g->t_s);
 	else
 		silly_norminette2(g, y, x);
 }
@@ -674,22 +670,24 @@ void	find_score(t_game *game)
 
 int	key_handler(int key, t_game *game)
 {
+	ft_printf("key: %d\n", key);
 	if (key == 65307)
 		gigafree(game);
 	if (game->dead == 0 && game->won == 0)
 	{
-		if (key == 'w')
+		if (key == 'w' || key == 65362)
 			try_move(game, 0, -1);
-		if (key == 's')
+		if (key == 's' || key == 65364)
 			try_move(game, 0, 1);
-		if (key == 'a')
+		if (key == 'a' || key == 65361)
 			try_move(game, -1, 0);
-		if (key == 'd')
+		if (key == 'd' || key == 65363)
 			try_move(game, 1, 0);
 	}
 	else if (game->dead_gif == 1 || game->won == 1)
 	{
-		if (key == 'w' || key == 's' || key == 'a' || key == 'd')
+		if (key == 'w' || key == 's' || key == 'a' || key == 'd'
+			|| key == 65362 || key == 65364 || key == 65361 || key == 65363)
 			gigafree(game);
 	}
 	return (0);
@@ -697,8 +695,30 @@ int	key_handler(int key, t_game *game)
 
 void	map_assign_cont(int rows, t_game *g, char *to_open, int j)
 {
-	g->win = mlx_new_window(g->mlx, (j - 1) * g->tile_size, rows * g->tile_size, to_open);
-	get_next_line(-2);
+	int	y;
+	int	x;
+	int	max_x;
+
+	y = 0;
+	x = 0;
+	max_x = 0;
+	g->win = mlx_new_window(g->mlx, (j - 1) * g->t_s, rows * g->t_s, to_open);
+	while (g->map[y])
+	{
+		while (g->map[y][x])
+		{
+			x++;
+			if (y == 0)
+				max_x = x;
+		}
+		if (max_x != x && y != 0)
+		{
+			free(to_open);
+			g->bb_n = 0;
+			gigafree(g);
+		}
+		y++;
+	}
 }
 
 void	map_assign(int rows, t_game *g, char *to_open)
@@ -800,17 +820,17 @@ int	game_loop(t_game *game)
 	animate_death(game);
 	animate(game);
 	if ((game->dead == 1 && game->dead_gif == 0)
-		|| (game->score == game->max_score && game->gif_stop == 0)
+		|| (game->score == game->max_score && game->gif_end == 0)
 		|| (game->won == 1 && game->won_gif == 0))
 	{
 		draw_map(game);
 	}
 	if (game->dead_gif == 1)
-		mlx_string_put(game->mlx, game->win, game->tile_size * game->player_x,
-			game->tile_size * game->player_y, 0xffffff, "GAME OVER!");
+		mlx_string_put(game->mlx, game->win, game->t_s * game->player_x,
+			game->t_s * game->player_y, 0xffffff, "GAME OVER!");
 	if (game->won == 1)
-		mlx_string_put(game->mlx, game->win, game->tile_size * game->player_x,
-			game->tile_size * game->player_y, 0xffffff, "YOU WIN!");
+		mlx_string_put(game->mlx, game->win, game->t_s * game->player_x,
+			game->t_s * game->player_y, 0xffffff, "YOU WIN!");
 	usleep(16000);
 	return (0);
 }
