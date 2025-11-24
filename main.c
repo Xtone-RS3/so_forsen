@@ -12,6 +12,48 @@
 
 #include "so_long.h"
 
+int	find_p_e(t_game *g, int x, int y)
+{
+	if (g->map[y][x] == 'P' && g->find.p_x == 0 && g->find.p_x == 0)
+	{
+		g->find.p_x = x;
+		g->find.p_y = y;
+	}
+	else if (g->map[y][x] == 'P' && g->find.p_x != 0 && g->find.p_x != 0)
+		return (-1);
+	if (g->map[y][x] == 'E' && g->find.e_x == 0 && g->find.e_x == 0)
+	{
+		g->find.e_x = x;
+		g->find.e_y = y;
+	}
+	else if (g->map[y][x] == 'E' && g->find.e_x != 0 && g->find.e_x != 0)
+		return (-1);
+	return (0);
+}
+
+int	map_checker(t_game *g)
+{
+	int	y;
+	int	x;
+
+	y = 0;
+	while (g->map[y])
+	{
+		x = 0;
+		while (g->map[y][x])
+		{
+			if (find_p_e(g, x, y) == -1)
+			{
+				ft_printf("Error\n");
+				return (-1);
+			}
+			x++;
+		}
+		y++;
+	}
+	return (0);
+}
+
 void	game_var_init(t_game *game, int argc, char **argv)
 {
 	game->bb_n = 0;
@@ -842,6 +884,12 @@ int	main(int argc, char **argv)
 	if (argc > 2)
 		return (ft_printf("That's a lot of arguments man, try only 1!\n"), 1);
 	game_var_init(&game, argc, argv);
+	game.find.p_x = 0;
+	game.find.p_y = 0;
+	game.find.e_x = 0;
+	game.find.e_y = 0;
+	if (map_checker(&game) == -1)
+		gigafree(&game);
 	if (game.dead != 1 || game.dead_gif == 1)
 		mlx_key_hook(game.win, key_handler, &game);
 	draw_map(&game);

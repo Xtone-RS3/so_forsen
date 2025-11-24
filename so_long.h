@@ -18,6 +18,14 @@
 # include "get_next_line/get_next_line.h"
 # include <sys/time.h>
 
+typedef struct s_find
+{
+	int	p_x;
+	int	p_y;
+	int	e_x;
+	int	e_y;
+}	t_find;
+
 typedef struct s_BB
 {
 	int	y;
@@ -60,6 +68,7 @@ typedef struct s_game
 	int		won;
 	int		won_gif;
 	int		won_frame;
+	t_find	find;
 }	t_game;
 
 
