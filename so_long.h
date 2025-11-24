@@ -18,6 +18,29 @@
 # include "get_next_line/get_next_line.h"
 # include <sys/time.h>
 
+typedef struct s_dirs
+{
+	int	n;
+	int	s;
+	int	e;
+	int	w;
+	int	any;
+}	t_dirs;
+
+typedef struct s_pos
+{
+	int	x;
+	int	y;
+}	t_pos;
+
+typedef struct s_find
+{
+	int	p_x;
+	int	p_y;
+	int	e_x;
+	int	e_y;
+}	t_find;
+
 typedef struct s_BB
 {
 	int	y;
@@ -42,6 +65,7 @@ typedef struct s_game
 	void	*img_angre;
 	void	*img_bb_vision;
 	char	**map;
+	char	**map_flood;
 	int		t_s;
 	int		player_x;
 	int		player_y;
@@ -60,8 +84,8 @@ typedef struct s_game
 	int		won;
 	int		won_gif;
 	int		won_frame;
+	t_find	find;
 }	t_game;
-
 
 int		game_loop(t_game *game);
 void	map_open_and_row(int argc, char **argv, t_game *game);
@@ -101,5 +125,7 @@ void	gigafree(t_game *g);
 void	gigafree_cont(t_game *g, int i);
 char	*img_name_gen(char *i);
 void	game_var_init(t_game *game, int argc, char **argv);
+int		find_p_e(t_game *g, int x, int y);
+int		map_checker(t_game *g);
 
 #endif

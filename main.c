@@ -12,6 +12,89 @@
 
 #include "so_long.h"
 
+t_dirs	directional_checks(t_game *g, int x, int y)
+{
+	t_dirs	result;
+
+	result.n = 0;
+	result.s = 0;
+	result.e = 0;
+	result.w = 0;
+	result.any = 0;
+	if (g->map_flood[y - 1][x] == 'F')
+		result.n = 1;
+	if (g->map_flood[y + 1][x] == 'F')
+		result.s = 1;
+	if (g->map_flood[y][x + 1] == 'F')
+		result.e = 1;
+	if (g->map_flood[y][x - 1] == 'F')
+		result.w = 1;
+	if (result.n == 1 || result.s == 1 || result.e == 1 || result.w == 1)
+		result.any = 1;
+	return (result);
+}
+
+t_pos	scuffed_flood_fill(t_game *g, int x, int y)
+{
+	t_pos	no_move;
+
+	no_move.x = x;
+	no_move.y = y;
+	if (x <= 0 || y <= 0)
+		return (no_move);
+	if (g->map_flood[y - 1][x] != '1' && g->map_flood[y - 1][x] != 'F')
+		return (g->map_flood[y - 1][x] = 'F', scuffed_flood_fill(g, x, y - 1));
+	if (g->map_flood[y + 1][x] != '1' && g->map_flood[y + 1][x] != 'F')
+		return (g->map_flood[y + 1][x] = 'F', scuffed_flood_fill(g, x, y + 1));
+	if (g->map_flood[y][x + 1] != '1' && g->map_flood[y][x + 1] != 'F')
+		return (g->map_flood[y][x + 1] = 'F', scuffed_flood_fill(g, x + 1, y));
+	if (g->map_flood[y][x - 1] != '1' && g->map_flood[y][x - 1] != 'F')
+		return (g->map_flood[y][x - 1] = 'F', scuffed_flood_fill(g, x - 1, y));
+	return (no_move);
+}
+
+int	find_p_e(t_game *g, int x, int y)
+{
+	if (g->map[y][x] == 'P' && g->find.p_x == 0 && g->find.p_x == 0)
+	{
+		g->find.p_x = x;
+		g->find.p_y = y;
+	}
+	else if (g->map[y][x] == 'P' && g->find.p_x != 0 && g->find.p_x != 0)
+		return (-1);
+	if (g->map[y][x] == 'E' && g->find.e_x == 0 && g->find.e_x == 0)
+	{
+		g->find.e_x = x;
+		g->find.e_y = y;
+	}
+	else if (g->map[y][x] == 'E' && g->find.e_x != 0 && g->find.e_x != 0)
+		return (-1);
+	return (0);
+}
+
+int	map_checker(t_game *g)
+{
+	int	y;
+	int	x;
+
+	y = 0;
+	while (g->map[y])
+	{
+		x = 0;
+		while (g->map[y][x])
+		{
+			if (find_p_e(g, x, y) == -1)
+			{
+				ft_printf("Error\n");
+				return (-1);
+			}
+			x++;
+		}
+		y++;
+	}
+	return (0);
+}
+
 void	game_var_init(t_game *game, int argc, char **argv)
 {
 	game->bb_n = 0;
@@ -34,6 +117,7 @@ void	game_var_init(t_game *game, int argc, char **argv)
 	game->mlx = mlx_init();
 	load_images(game);
 	map_open_and_row(argc, argv, game);
+	game->map_flood = game->map;
 	game->bb_xy = malloc(sizeof(t_BB) * game->bb_n);
 	find_player(game);
 	find_score(game);
@@ -670,7 +754,6 @@ void	find_score(t_game *game)
 
 int	key_handler(int key, t_game *game)
 {
-	ft_printf("key: %d\n", key);
 	if (key == 65307)
 		gigafree(game);
 	if (game->dead == 0 && game->won == 0)
@@ -842,10 +925,31 @@ int	main(int argc, char **argv)
 	if (argc > 2)
 		return (ft_printf("That's a lot of arguments man, try only 1!\n"), 1);
 	game_var_init(&game, argc, argv);
+	game.find.p_x = 0;
+	game.find.p_y = 0;
+	game.find.e_x = 0;
+	game.find.e_y = 0;
+	if (map_checker(&game) == -1)
+		gigafree(&game);
 	if (game.dead != 1 || game.dead_gif == 1)
 		mlx_key_hook(game.win, key_handler, &game);
 	draw_map(&game);
+	scuffed_flood_fill(&game, game.find.e_x, game.find.e_y);
+	// int	y = 0;
+	// int	x = 0;
+	// while (game.map_flood[y])
+	// {
+	// 	x = 0;
+	// 	while (game.map_flood[y][x])
+	// 	{
+	// 		ft_printf("%c", game.map_flood[y][x]);
+	// 		x++;
+	// 	}
+	// 	y++;
+	// }
+	if (directional_checks(&game, game.find.e_x, game.find.e_y).any == 0)
+		return (ft_printf("Error\n"), gigafree(&game), 0);
+	ft_printf("this: %c\n", game.map_flood[game.find.e_y][game.find.e_x]);
 	mlx_loop_hook(game.mlx, game_loop, &game);
 	mlx_loop(game.mlx);
-	// gigafree(&game); //is this needed here? i doubt it
 }

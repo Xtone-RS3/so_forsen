@@ -57,13 +57,13 @@ clean:
 	rm -f $(OBJECTS)
 
 fclean: clean
-	make -C $(MLX_PATH) fclean
+	make -C $(MLX_PATH) clean
 	make -C $(LIBFT_PATH) fclean
 	rm -f $(NAME)
 
 re: fclean all
 
 norm:
-	norminette libft initializer.c key_hook.c map.c move.c validate_input.c place_images.c main.c so_long.h victory.c helpers.c
+	norminette libft main.c so_long.h #initializer.c key_hook.c map.c move.c validate_input.c place_images.c main.c so_long.h victory.c helpers.c
 
 .PHONY: all clean fclean re norm
