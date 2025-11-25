@@ -117,7 +117,6 @@ void	game_var_init(t_game *game, int argc, char **argv)
 	game->mlx = mlx_init();
 	load_images(game);
 	map_open_and_row(argc, argv, game);
-	game->map_flood = game->map;
 	game->bb_xy = malloc(sizeof(t_BB) * game->bb_n);
 	find_player(game);
 	find_score(game);
@@ -148,6 +147,13 @@ void	gigafree_cont(t_game *g, int i)
 		while (g->map[i])
 			free(g->map[i++]);
 		free(g->map);
+	}
+	i = 0;
+	if (g->map_flood)
+	{
+		while (g->map_flood[i])
+			free(g->map_flood[i++]);
+		free(g->map_flood);
 	}
 	if (g->bb_n != 0)
 		free(g->bb_xy);
@@ -733,6 +739,29 @@ void	find_player(t_game *game)
 	}
 }
 
+void	find_score_flood(t_game *game)
+{
+	int	y;
+	int	x;
+
+	y = 0;
+	while (game->map[y])
+	{
+		x = 0;
+		while (game->map_flood[y][x])
+		{
+			if (game->map_flood[y][x] == 'C')
+			{
+				ft_printf("Error\n");
+				gigafree(0);
+				return ;
+			}
+			x++;
+		}
+		y++;
+	}
+}
+
 void	find_score(t_game *game)
 {
 	int	y;
@@ -804,6 +833,30 @@ void	map_assign_cont(int rows, t_game *g, char *to_open, int j)
 	}
 }
 
+void	map_assign_flood(int rows, t_game *g, char *to_open)
+{
+	int		j;
+	int		i;
+	int		fd;
+	char	*line;
+
+	i = 0;
+	fd = open(to_open, O_RDONLY);
+	while (i < rows)
+	{
+		j = -1;
+		line = get_next_line(fd);
+		g->map_flood[i] = ft_calloc(sizeof(char *), (ft_strlen(line) + 1));
+		if (!g->map_flood[i])
+			free(g->map_flood);
+		while (line[++j])
+			g->map_flood[i][j] = line[j];
+		free(line);
+		i++;
+	}
+	close(fd);
+}
+
 void	map_assign(int rows, t_game *g, char *to_open)
 {
 	int		j;
@@ -836,9 +889,11 @@ void	map_assign(int rows, t_game *g, char *to_open)
 void	map_open_and_row_cont(t_game *game, int rows, char *to_open)
 {
 	game->map = ft_calloc(sizeof(char *), (rows + 1));
+	game->map_flood = ft_calloc(sizeof(char *), (rows + 1));
 	if (!game->map)
 		return (free(to_open));
 	map_assign(rows, game, to_open);
+	map_assign_flood(rows, game, to_open);
 	free(to_open);
 }
 
@@ -935,21 +990,9 @@ int	main(int argc, char **argv)
 		mlx_key_hook(game.win, key_handler, &game);
 	draw_map(&game);
 	scuffed_flood_fill(&game, game.find.e_x, game.find.e_y);
-	// int	y = 0;
-	// int	x = 0;
-	// while (game.map_flood[y])
-	// {
-	// 	x = 0;
-	// 	while (game.map_flood[y][x])
-	// 	{
-	// 		ft_printf("%c", game.map_flood[y][x]);
-	// 		x++;
-	// 	}
-	// 	y++;
-	// }
+	find_score_flood(&game);
 	if (directional_checks(&game, game.find.e_x, game.find.e_y).any == 0)
 		return (ft_printf("Error\n"), gigafree(&game), 0);
-	ft_printf("this: %c\n", game.map_flood[game.find.e_y][game.find.e_x]);
 	mlx_loop_hook(game.mlx, game_loop, &game);
 	mlx_loop(game.mlx);
 }
