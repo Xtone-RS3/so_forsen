@@ -12,6 +12,41 @@
 
 #include "so_long.h"
 
+t_dirs	directional_checks(t_game *g, int x, int y)
+{
+	t_dirs	result;
+
+	result.n = 0;
+	result.s = 0;
+	result.e = 0;
+	result.w = 0;
+	result.any = 0;
+	if (g->map_flood[y - 1][x] == 'F')
+		result.n = 1;
+	if (g->map_flood[y + 1][x] == 'F')
+		result.s = 1;
+	if (g->map_flood[y][x + 1] == 'F')
+		result.e = 1;
+	if (g->map_flood[y][x - 1] == 'F')
+		result.w = 1;
+	if (result.n == 1 || result.s == 1 || result.e == 1 || result.w == 1)
+		result.any = 1;
+	return (result);
+}
+
+void	scuffed_flood_fill(t_game *g, int x, int y)
+{
+	if ((x <= 0 || y <= 0) && g->map_flood[y][x] && g->map_flood[y])
+		return ;
+	if (g->map_flood[y][x] == '1' || g->map_flood[y][x] == 'F')
+		return ;
+	g->map_flood[y][x] = 'F';
+	scuffed_flood_fill(g, x, y - 1);
+	scuffed_flood_fill(g, x, y + 1);
+	scuffed_flood_fill(g, x + 1, y);
+	scuffed_flood_fill(g, x - 1, y);
+}
+
 int	find_p_e(t_game *g, int x, int y)
 {
 	if (g->map[y][x] == 'P' && g->find.p_x == 0 && g->find.p_x == 0)
@@ -54,6 +89,44 @@ int	map_checker(t_game *g)
 	return (0);
 }
 
+void	game_var_init_cont_cont(t_game *game)
+{
+	if (game->bb_n > 0)
+	{
+		game->bb_xy = malloc(sizeof(t_BB) * game->bb_n);
+		if (!game->bb_xy)
+		{
+			ft_printf("Error\n");
+			gigafree(0);
+		}
+		find_bb_xy(game);
+	}
+	find_player(game);
+	find_score(game);
+	bb_looking(game);
+}
+
+void	game_var_init_cont(t_game *game, int argc, char **argv)
+{
+	game->img_death = ft_calloc(sizeof(void *), 5);
+	if (!game->img_death)
+	{
+		ft_printf("Error\n");
+		gigafree(game);
+	}
+	game->img_win = ft_calloc(sizeof(void *), 155);
+	if (!game->img_win)
+	{
+		ft_printf("Error\n");
+		gigafree(game);
+	}
+	sade(get_time_ms(), game);
+	game->mlx = mlx_init();
+	load_images(game);
+	map_open_and_row(argc, argv, game);
+	game_var_init_cont_cont(game);
+}
+
 void	game_var_init(t_game *game, int argc, char **argv)
 {
 	game->bb_n = 0;
@@ -70,17 +143,12 @@ void	game_var_init(t_game *game, int argc, char **argv)
 	game->curr_frame = 0;
 	game->gif_end = 0;
 	game->img_exit_trans = ft_calloc(sizeof(void *), 85);
-	game->img_death = ft_calloc(sizeof(void *), 5);
-	game->img_win = ft_calloc(sizeof(void *), 155);
-	sade(get_time_ms(), game);
-	game->mlx = mlx_init();
-	load_images(game);
-	map_open_and_row(argc, argv, game);
-	game->bb_xy = malloc(sizeof(t_BB) * game->bb_n);
-	find_player(game);
-	find_score(game);
-	find_bb_xy(game);
-	bb_looking(game);
+	if (!game->img_exit_trans)
+	{
+		ft_printf("Error\n");
+		gigafree(game);
+	}
+	game_var_init_cont(game, argc, argv);
 }
 
 char	*img_name_gen(char *i)
@@ -106,6 +174,13 @@ void	gigafree_cont(t_game *g, int i)
 		while (g->map[i])
 			free(g->map[i++]);
 		free(g->map);
+	}
+	i = 0;
+	if (g->map_flood)
+	{
+		while (g->map_flood[i])
+			free(g->map_flood[i++]);
+		free(g->map_flood);
 	}
 	if (g->bb_n != 0)
 		free(g->bb_xy);
@@ -614,6 +689,11 @@ void	silly_norminette2(t_game *g, int y, int x)
 	else if (g->map[y][x] == 'P' && g->won == 1 && g->won_gif == 0)
 		mlx_put_image_to_window(g->mlx, g->win,
 			g->img_win[g->won_frame], x * g->t_s, y * g->t_s);
+	else if (g->map[y][x] != '\n')
+	{
+		ft_printf("Error\n");
+		gigafree(g);
+	}
 }
 
 void	silly_norminette(t_game *g, int y, int x)
@@ -643,6 +723,18 @@ void	silly_norminette(t_game *g, int y, int x)
 		silly_norminette2(g, y, x);
 }
 
+void	step_draw(t_game *game)
+{
+	char	*steps_hold;
+	char	*steps_print;
+
+	steps_hold = ft_itoa(game->walked);
+	steps_print = ft_strjoin("steps ", steps_hold);
+	mlx_string_put(game->mlx, game->win, 0, 20, 0xffffff, steps_print);
+	free(steps_hold);//turn all this into an image
+	free(steps_print);
+}
+
 void	draw_map(t_game *g)
 {
 	int		x;
@@ -666,6 +758,7 @@ void	draw_map(t_game *g)
 	mlx_string_put(g->mlx, g->win, 0, 10, 0xffffff, score_bar);
 	free(score_hold);//turn all this into an image
 	free(score_bar);
+	step_draw(g);
 }
 
 void	find_player(t_game *game)
@@ -683,6 +776,29 @@ void	find_player(t_game *game)
 			{
 				game->player_x = x;
 				game->player_y = y;
+				return ;
+			}
+			x++;
+		}
+		y++;
+	}
+}
+
+void	find_score_flood(t_game *game)
+{
+	int	y;
+	int	x;
+
+	y = 0;
+	while (game->map[y])
+	{
+		x = 0;
+		while (game->map_flood[y][x])
+		{
+			if (game->map_flood[y][x] == 'C')
+			{
+				ft_printf("Error\n");
+				gigafree(game);
 				return ;
 			}
 			x++;
@@ -712,7 +828,6 @@ void	find_score(t_game *game)
 
 int	key_handler(int key, t_game *game)
 {
-	ft_printf("key: %d\n", key);
 	if (key == 65307)
 		gigafree(game);
 	if (game->dead == 0 && game->won == 0)
@@ -757,10 +872,35 @@ void	map_assign_cont(int rows, t_game *g, char *to_open, int j)
 		{
 			free(to_open);
 			g->bb_n = 0;
+			ft_printf("Error\n");
 			gigafree(g);
 		}
 		y++;
 	}
+}
+
+void	map_assign_flood(int rows, t_game *g, char *to_open)
+{
+	int		j;
+	int		i;
+	int		fd;
+	char	*line;
+
+	i = 0;
+	fd = open(to_open, O_RDONLY);
+	while (i < rows)
+	{
+		j = -1;
+		line = get_next_line(fd);
+		g->map_flood[i] = ft_calloc(sizeof(char *), (ft_strlen(line) + 1));
+		if (!g->map_flood[i])
+			free(g->map_flood);
+		while (line[++j])
+			g->map_flood[i][j] = line[j];
+		free(line);
+		i++;
+	}
+	close(fd);
 }
 
 void	map_assign(int rows, t_game *g, char *to_open)
@@ -796,8 +936,18 @@ void	map_open_and_row_cont(t_game *game, int rows, char *to_open)
 {
 	game->map = ft_calloc(sizeof(char *), (rows + 1));
 	if (!game->map)
-		return (free(to_open));
+	{
+		ft_printf("Error\n");
+		gigafree(game);
+	}
+	game->map_flood = ft_calloc(sizeof(char *), (rows + 1));
+	if (!game->map_flood)
+	{
+		ft_printf("Error\n");
+		gigafree(game);
+	}
 	map_assign(rows, game, to_open);
+	map_assign_flood(rows, game, to_open);
 	free(to_open);
 }
 
@@ -826,9 +976,13 @@ char	*ft_strjoin_s_l(char *s1, char *s2)
 
 char	*arg_logic(char *input)
 {
-	if (ft_strnstr(input, ".ber", ft_strlen(input)) == NULL)
-		return (ft_strjoin_s_l("maps/", ft_strjoin(input, ".ber")));
-	return (ft_strjoin("maps/", input));
+	if (ft_strnstr(input, "maps/", ft_strlen(input)) == NULL)
+	{
+		if (ft_strnstr(input, ".ber", ft_strlen(input)) == NULL)
+			return (ft_strjoin_s_l("maps/", ft_strjoin(input, ".ber")));
+		return (ft_strjoin("maps/", input));
+	}
+	return (ft_strjoin(input, ""));
 }
 
 void	map_open_and_row(int argc, char **argv, t_game *game)
@@ -893,7 +1047,25 @@ int	main(int argc, char **argv)
 	if (game.dead != 1 || game.dead_gif == 1)
 		mlx_key_hook(game.win, key_handler, &game);
 	draw_map(&game);
+	scuffed_flood_fill(&game, game.find.e_x, game.find.e_y);
+	find_score_flood(&game);
+	if (directional_checks(&game, game.find.e_x, game.find.e_y).any == 0)
+		return (ft_printf("Error\n"), gigafree(&game), 0);
 	mlx_loop_hook(game.mlx, game_loop, &game);
 	mlx_loop(game.mlx);
-	// gigafree(&game); //is this needed here? i doubt it
 }
+
+/*
+	int	y = 0;
+	int	x = 0;
+	while (game.map_flood[y])
+	{
+		x = 0;
+		while (game.map_flood[y][x])
+		{
+			ft_printf("%c", game.map_flood[y][x]);
+			x++;
+		}
+		y++;
+	}
+*/
