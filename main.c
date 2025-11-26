@@ -1046,11 +1046,11 @@ int	main(int argc, char **argv)
 		gigafree(&game);
 	if (game.dead != 1 || game.dead_gif == 1)
 		mlx_key_hook(game.win, key_handler, &game);
-	draw_map(&game);
 	scuffed_flood_fill(&game, game.find.e_x, game.find.e_y);
 	find_score_flood(&game);
 	if (directional_checks(&game, game.find.e_x, game.find.e_y).any == 0)
 		return (ft_printf("Error\n"), gigafree(&game), 0);
+	draw_map(&game);
 	mlx_loop_hook(game.mlx, game_loop, &game);
 	mlx_loop(game.mlx);
 }
