@@ -97,9 +97,14 @@ void	game_var_init_cont_cont(t_game *game)
 		if (!game->bb_xy)
 		{
 			ft_printf("Error\n");
-			gigafree(0);
+			gigafree(game, 0);
 		}
 		find_bb_xy(game);
+	}
+	if (game->collect_n == 0)
+	{
+		ft_printf("Error\n");
+		gigafree(game, 0);
 	}
 	find_player(game);
 	find_score(game);
@@ -112,13 +117,13 @@ void	game_var_init_cont(t_game *game, int argc, char **argv)
 	if (!game->img_death)
 	{
 		ft_printf("Error\n");
-		gigafree(game);
+		gigafree(game, 0);
 	}
 	game->img_win = ft_calloc(sizeof(void *), 155);
 	if (!game->img_win)
 	{
 		ft_printf("Error\n");
-		gigafree(game);
+		gigafree(game, 0);
 	}
 	sade(get_time_ms(), game);
 	game->mlx = mlx_init();
@@ -130,6 +135,7 @@ void	game_var_init_cont(t_game *game, int argc, char **argv)
 void	game_var_init(t_game *game, int argc, char **argv)
 {
 	game->bb_n = 0;
+	game->collect_n = 0;
 	game->dead = 0;
 	game->dead_frame = 0;
 	game->dead_gif = 0;
@@ -143,10 +149,14 @@ void	game_var_init(t_game *game, int argc, char **argv)
 	game->curr_frame = 0;
 	game->gif_end = 0;
 	game->img_exit_trans = ft_calloc(sizeof(void *), 85);
+	game->find.p_x = 0;
+	game->find.p_y = 0;
+	game->find.e_x = 0;
+	game->find.e_y = 0;
 	if (!game->img_exit_trans)
 	{
 		ft_printf("Error\n");
-		gigafree(game);
+		gigafree(game, 0);
 	}
 	game_var_init_cont(game, argc, argv);
 }
@@ -159,6 +169,19 @@ char	*img_name_gen(char *i)
 	hold = ft_strjoin("images/vibE/vibE_", i);
 	result = ft_strjoin(hold, ".xpm");
 	return (free(hold), result);
+}
+
+void	gigafree_fd(t_game *g)
+{
+	mlx_destroy_display(g->mlx);
+	free(g->mlx);
+	free(g->img_exit_trans);
+	free(g->img_death);
+	free(g->img_win);
+	if (g->bb_n != 0)
+		free(g->bb_xy);
+	get_next_line(-2);
+	exit(0);
 }
 
 void	gigafree_cont(t_game *g, int i)
@@ -188,7 +211,7 @@ void	gigafree_cont(t_game *g, int i)
 	exit(0);
 }
 
-void	gigafree(t_game *g)
+void	gigafree(t_game *g, int fd_error)
 {
 	int	i;
 
@@ -209,6 +232,8 @@ void	gigafree(t_game *g)
 	i = 0;
 	while (i < 155)
 		mlx_destroy_image(g->mlx, g->img_win[i++]);
+	if (fd_error)
+		gigafree_fd(g);
 	gigafree_cont(g, 0);
 }
 
@@ -692,7 +717,7 @@ void	silly_norminette2(t_game *g, int y, int x)
 	else if (g->map[y][x] != '\n')
 	{
 		ft_printf("Error\n");
-		gigafree(g);
+		gigafree(g, 0);
 	}
 }
 
@@ -798,7 +823,7 @@ void	find_score_flood(t_game *game)
 			if (game->map_flood[y][x] == 'C')
 			{
 				ft_printf("Error\n");
-				gigafree(game);
+				gigafree(game, 0);
 				return ;
 			}
 			x++;
@@ -829,7 +854,7 @@ void	find_score(t_game *game)
 int	key_handler(int key, t_game *game)
 {
 	if (key == 65307)
-		gigafree(game);
+		gigafree(game, 0);
 	if (game->dead == 0 && game->won == 0)
 	{
 		if (key == 'w' || key == 65362)
@@ -845,7 +870,7 @@ int	key_handler(int key, t_game *game)
 	{
 		if (key == 'w' || key == 's' || key == 'a' || key == 'd'
 			|| key == 65362 || key == 65364 || key == 65361 || key == 65363)
-			gigafree(game);
+			gigafree(game, 0);
 	}
 	return (0);
 }
@@ -873,7 +898,7 @@ void	map_assign_cont(int rows, t_game *g, char *to_open, int j)
 			free(to_open);
 			g->bb_n = 0;
 			ft_printf("Error\n");
-			gigafree(g);
+			gigafree(g, 0);
 		}
 		y++;
 	}
@@ -903,15 +928,13 @@ void	map_assign_flood(int rows, t_game *g, char *to_open)
 	close(fd);
 }
 
-void	map_assign(int rows, t_game *g, char *to_open)
+void	map_assign(int rows, t_game *g, char *to_open, int fd)
 {
 	int		j;
 	int		i;
-	int		fd;
 	char	*line;
 
 	i = 0;
-	fd = open(to_open, O_RDONLY);
 	while (i < rows)
 	{
 		j = -1;
@@ -923,6 +946,8 @@ void	map_assign(int rows, t_game *g, char *to_open)
 		{
 			if (line[j] == 'B')
 				g->bb_n++;
+			if (line[j] == 'C')
+				g->collect_n++;
 			g->map[i][j] = line[j];
 		}
 		free(line);
@@ -934,19 +959,22 @@ void	map_assign(int rows, t_game *g, char *to_open)
 
 void	map_open_and_row_cont(t_game *game, int rows, char *to_open)
 {
+	int	fd;
+
 	game->map = ft_calloc(sizeof(char *), (rows + 1));
 	if (!game->map)
 	{
 		ft_printf("Error\n");
-		gigafree(game);
+		gigafree(game, 0);
 	}
 	game->map_flood = ft_calloc(sizeof(char *), (rows + 1));
 	if (!game->map_flood)
 	{
 		ft_printf("Error\n");
-		gigafree(game);
+		gigafree(game, 0);
 	}
-	map_assign(rows, game, to_open);
+	fd = open(to_open, O_RDONLY);
+	map_assign(rows, game, to_open, fd);
 	map_assign_flood(rows, game, to_open);
 	free(to_open);
 }
@@ -999,6 +1027,12 @@ void	map_open_and_row(int argc, char **argv, t_game *game)
 		to_open = ft_strjoin("maps/map2.ber", "");
 	ft_printf("Opening file: %s\n", to_open);
 	fd = open(to_open, O_RDONLY);
+	if (fd == -1)
+	{
+		ft_printf("Error\n");
+		free(to_open);
+		gigafree(game, 1);
+	}
 	line = get_next_line(fd);
 	while (line)
 	{
@@ -1031,6 +1065,12 @@ int	game_loop(t_game *game)
 	return (0);
 }
 
+int	close_window(t_game *game)
+{
+	gigafree(game, 0);
+	return (0);
+}
+
 int	main(int argc, char **argv)
 {
 	t_game	game;
@@ -1038,19 +1078,16 @@ int	main(int argc, char **argv)
 	if (argc > 2)
 		return (ft_printf("That's a lot of arguments man, try only 1!\n"), 1);
 	game_var_init(&game, argc, argv);
-	game.find.p_x = 0;
-	game.find.p_y = 0;
-	game.find.e_x = 0;
-	game.find.e_y = 0;
 	if (map_checker(&game) == -1)
-		gigafree(&game);
+		gigafree(&game, 0);
 	if (game.dead != 1 || game.dead_gif == 1)
 		mlx_key_hook(game.win, key_handler, &game);
 	scuffed_flood_fill(&game, game.find.e_x, game.find.e_y);
 	find_score_flood(&game);
 	if (directional_checks(&game, game.find.e_x, game.find.e_y).any == 0)
-		return (ft_printf("Error\n"), gigafree(&game), 0);
+		return (ft_printf("Error\n"), gigafree(&game, 0), 0);
 	draw_map(&game);
+	mlx_hook(game.win, 17, 0, close_window, &game);
 	mlx_loop_hook(game.mlx, game_loop, &game);
 	mlx_loop(game.mlx);
 }
